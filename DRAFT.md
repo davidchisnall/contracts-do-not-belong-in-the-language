@@ -96,6 +96,55 @@ The new syntax is almost possible to define in terms of existing abstract-machin
 This is motivated by a desire to allow different implementations but the result is that almost everything in P2900 is implementation-defined behaviour.
 This makes it very hard to reason about the semantics of a program at a source level.
 
+There has been some discussion of whether contracts do or do not change ODR.
+This arises from the fact that ODR is not addressed directly in P2900, only via implication.
+It is (as outlined in the 'Mixed Mode' section) permitted for two compilation units to be built with two different contract enforcement modes.
+This means that pre- and post-conditions and, most importantly, `contract_assert` can differ in two versions of a function from a header shared between the two.
+
+This composes with the rule that it must be possible to adopt contracts in a compilation unit in a program where not every compilation unit is compiled with a contracts-aware compiler.
+This means that, if `foo()` is a function containing a `contract_assert` then it must have the same decorated name in all compilation units, irrespective of their contract mode, otherwise callers would break.
+It may be possible to define `inline` functions that have contracts to use different decorated names, because it would already be an ODR violation if the `contract_assert` were `#define`d away, though this was not done in the implementations from the implementation report.
+
+This makes contracts unique in how the affect lowering in a modern C++ compiler.
+The front end parses the source into an abstract syntax tree (AST) and then lowers it to some intermediate representation for mid-level optimisers.
+This lowering depends on the token stream (including pre-defined macros, which are a short-hand way of adding tokens to the front of a compilation unit) and the target and, prior to P2900, nothing else (for standard C++: vendor extensions such as `-ffast-math` may affect this).
+
+Consider the following example:
+
+```c++
+inline foo(X *arg)
+{
+    if constexpr (SOME_MACRO)
+    {
+        if (arg == nullptr)
+        {
+            abort();
+        }
+    }
+    ...
+}
+```
+
+Compiling this with two different values of `SOME_MACRO` would violate ODR.
+If the `if constexpr` were replaced with `#if SOME_MACRO` then the same would apply.
+This is an important property of ODR because this violation would change the *pre-optimisation* semantics of the function and so it is impossible for any later optimisation to reason about the behaviour of the two different variations of this function when it has access to only one.
+
+Now consider this version after P2900:
+
+```c++
+inline foo(X *arg)
+{
+    contract_assert(arg != nullptr);
+    ...
+}
+```
+
+It is permitted to mix versions of this with different contract semantics and the linker is required to pick one.
+There is no other way of writing `foo` without contracts that would lower to something equivalent conditional on a compiler setting and not be an ODR violation.
+This is one of the key arguments for contracts being part of the language made in P2900.
+
+Whether intentional or not, this is a relaxation of ODR in a way that fundamentally alters the guarantees that a C++ front end provides to (mostly language-agnostic) mid-level optimisers.
+
 ### Are contracts a good use for the complexity budget?
 
 Disclaimer: This section contains some deeply unscientific informal polls.
@@ -114,12 +163,12 @@ The number of people who would adopt C++ if it had contracts is below the lizard
 
 This suggests that, although contracts may be very important to some users, they are not a widely desirable feature.
 
-Given the number of responses from people who are not C++ programmers, I tried [another poll to determine why people don't use C++](https://infosec.exchange/@david_chisnall/113973114395476489) (results with 105 respondents):
+Given the number of responses from people who are not C++ programmers, I tried [another poll to determine why people don't use C++](https://infosec.exchange/@david_chisnall/113973114395476489) (results with 532 respondents):
 
- - It is not memory safe (19%)
+ - It is not memory safe (22%)
  - It is too complex (73%)
- - It lacks a feature I consider important (3%)
- - It doesn't work on the target I care about (5%)
+ - It lacks a feature I consider important (2%)
+ - It doesn't work on the target I care about (3%)
 
 This suggests that, although adding contracts may make around 2.5% of people consider adopting C++ (the respondents from the first poll who were not C++ programmers because it lacks contracts), 73% are already put off by the complexity, something that contracts makes worse.
 
