@@ -17,7 +17,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update -y
-          sudo apt install -y pandoc pdflatex
+          sudo apt install -y pandoc texlive-latex-base texlive-fonts-recommended texlive-fonts-extra
       - name: Build
         run: pandoc -s -o DRAFT.pdf DRAFT.md
       - name:
