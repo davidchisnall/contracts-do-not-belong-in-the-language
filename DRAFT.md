@@ -13,7 +13,7 @@ _David Chisnall \<<David.Chisnall@cl.cam.ac.uk>\>_
 ## Introduction
 
 Contracts have been proposed in P2900 as a new language feature.
-This paper argues that, assuming that contracts are a desirable feature, implementing them in the language as descried by P2900, is the wrong approach.
+This paper argues that, assuming that contracts are a desirable feature, implementing them in the language as described by P2900, is the wrong approach.
 
 ## When should we add language features
 
